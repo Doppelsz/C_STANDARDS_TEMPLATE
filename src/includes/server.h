@@ -1,22 +1,15 @@
 /*
- * Multi-threaded TCP server — public API.
- * C99, POSIX. Target: Unix-like systems only.
+ * server.h — Single-threaded static HTML5 server. C99, POSIX.
+ * Target: Unix-like systems only. Inline citations per INLINE_TRACEABILITY_GUIDE.
  */
 
 #ifndef SERVER_H
 #define SERVER_H
 
-/* Default listen port. */
-#define SERVER_DEFAULT_PORT 8080
+/* C99 6.2.1: one definition per identifier; header guard avoids multiple definitions. */
+#define SERVER_PORT 8080
 
-/* Max length of a single read line from client. */
-#define SERVER_LINE_MAX 1024
-
-/*
- * Run the server: bind, listen, accept in a loop; each connection
- * is handled in a separate thread. Returns 0 on normal shutdown,
- * non-zero on error. Port is in host byte order.
- */
-int server_run(unsigned short port);
+/* Run the server loop: accept connections and respond with static HTML5. Returns 0 on normal stop. */
+int server_run(void);
 
 #endif /* SERVER_H */

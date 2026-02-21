@@ -26,6 +26,9 @@ Apply when: the user requests a C99 compliance check; the user requests fixes fo
 
 When reviewing or checking C code:
 
+- **MUST:** Follow the guide path and review output format in `docs/CODE_REVIEW_GUIDE.md` (project root) or `C_STANDARDS/docs/CODE_REVIEW_GUIDE.md` (standards folder in repo).
+- **MUST:** Response to the user MUST be professional, concise, and in a programmer context; use the structured format (Summary, Verdict, Findings, Reports, Next steps) defined in CODE_REVIEW_GUIDE.
+- **MUST NOT:** Use lengthy prose or filler in the response; findings in the narrative MUST be brief (file, line, reference, message).
 - **MUST:** Run Phase A.2 (COMPILE_C99) and A.3 (EVALUATE_LANGUAGE) to produce `language_report` and `language_result`.
 - **MUST:** Run Phase B.2 (RUN_COMPLIANCE_CHECK) and B.3 (EVALUATE_COMPLIANCE) only after Phase A passes (A.3 pass = true).
 - **MUST:** Write Phase A output to `reports/<run_id>_language.json` with exact schema: file, line, diagnostic_code, message, severity, c99_clause, rationale.
@@ -61,6 +64,8 @@ When generating or editing C code to fix non-compliance:
 - **MUST:** Prefer minimal edits: change only what is necessary to satisfy the cited rule or clause; avoid unrelated refactors or style-only changes unless required by the rule.
 - **MUST:** Ensure generated code compiles under `-std=c99` with the project include path before considering the fix complete.
 - **MUST:** Produce code for **Unix-like systems only**. **MUST NOT** recommend or introduce Windows-only code, Winsock, `_WIN32`/`_WIN64` preprocessor branches, Windows headers, or `#pragma comment(lib, ...)` for Windows libraries. Use POSIX APIs (e.g. Berkeley sockets, `close()`, `errno`/`strerror`) only.
+- **MUST:** When generating C code that uses POSIX-only APIs from standard headers (e.g. `<signal.h>`: `struct sigaction`, `sigaction()`, `sigemptyset()`), ensure POSIX visibility is requested on glibc per the guide (e.g. `_POSIX_C_SOURCE` defined before any includes, or build defines it). Follow the "POSIX visibility (glibc/Linux)" and "Generation constraints (checklist)" sections in `docs/C99_AI_GUIDE.md`.
+- **MUST NOT:** Rely on POSIX symbols from standard C headers when building with `-std=c99` on Linux without requesting POSIX (e.g. feature-test macro); doing so causes implicit declaration and incomplete type errors.
 
 ---
 

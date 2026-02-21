@@ -23,6 +23,7 @@
 | Component | Role |
 | --------- | ----- |
 | **docs/C99_AI_GUIDE.md** | Procedure: step index, A.1–A.4, B.1–B.4, schemas, default layout. AI-oriented (INPUT/OUTPUT/NEXT). |
+| **docs/CODE_REVIEW_GUIDE.md** | Code review: canonical path (A.2→A.3→B.2→B.3) and response format (Summary, Verdict, Findings, Reports, Next steps); professional, concise output. |
 | **docs/INLINE_TRACEABILITY_GUIDE.md** | Inline citation format and placement for generated C code; reference + rationale at key points. |
 | **.cursor/rules/c99-compliance-codegen.mdc** | Rule: when to apply; MUST follow guide, Phase A then B; schema outputs; remediation_log with clause/rule_id. |
 | **refs/** | PDFs: Phase A (ISO C99, nt1256), Phase B (10rules, jpl-c-1.0). Add/replace and update guide list. |
@@ -45,6 +46,7 @@
 - **Deploy:** Use as GitHub template or copy folder + rule; guide path from workspace root (e.g. `docs/C99_AI_GUIDE.md` when repo is project; `C_STANDARDS/docs/C99_AI_GUIDE.md` when standards folder in repo). No env or config.
 - **Refs:** Add/replace PDFs in refs/; update REFERENCE DOCUMENTS in guide.
 - **Tools:** Guide specifies -std=c99, include path, bin/, schemas—no specific compiler.
+- **Linux/glibc:** When targeting Linux/glibc with `-std=c99`, POSIX-only APIs from standard headers require a feature-test macro (see C99_AI_GUIDE.md "POSIX visibility (glibc/Linux)"); the guide and rule require generated code to satisfy this so that the default project build compiles.
 
 ---
 

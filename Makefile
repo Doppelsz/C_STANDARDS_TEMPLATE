@@ -1,9 +1,9 @@
-# Multi-threaded server — C99, POSIX. Unix-like systems only.
+# Single-threaded static HTML5 server — C99, POSIX. Unix-like systems only.
 # Usage: make [all] | clean
 
 CC     ?= cc
 CFLAGS ?= -std=c99 -Wall -Wextra -I src/includes
-LDFLAGS = -lpthread
+LDFLAGS =
 BINDIR  = bin
 SRC     = src/server.c
 TARGET  = $(BINDIR)/server

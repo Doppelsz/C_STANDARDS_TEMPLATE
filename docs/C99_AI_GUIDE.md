@@ -57,6 +57,14 @@ The same references used for Phase A (A.1) and Phase B (B.1) are the **single so
 
 This reduces violations at A.2/B.2 and minimizes A.4/B.4 fix cycles. The agent does not modify the guide or the Cursor rule during generation; it only reads them.
 
+### POSIX visibility (glibc/Linux)
+
+- **When it applies:** Building with `-std=c99` on Linux/glibc. Any use of POSIX-only APIs that are not part of the C99 standard (e.g. `sigaction`, `sigemptyset`). Note: `pthread_*` from `<pthread.h>` is usually fine as it is a POSIX header; the issue is standard headers like `<signal.h>` that have both C99 and POSIX parts.
+- **Rule:** Before including any header that provides POSIX-only symbols, ensure the translation unit requests POSIX. The standard way on glibc is to define a feature-test macro **before** any `#include` (e.g. at the very top of the file, or via compiler: `-D_POSIX_C_SOURCE=200809L`).
+- **In source:** At the top of the file, first line(s), e.g. `#define _POSIX_C_SOURCE 200809L` then includes. Alternatively the build may define it (e.g. in `CFLAGS`); if so, generated code need not repeat it.
+- **Common POSIX-only uses in standard headers:** `<signal.h>` → `struct sigaction`, `sigaction()`, `sigemptyset()`, `sigaddset()`; other headers may have similar C99 vs POSIX subsets on glibc.
+- **Reference:** `man 7 feature_test_macros` (glibc); POSIX.1-2008.
+
 ### Generation constraints (checklist)
 
 A fixed list the agent consults when writing C (derived from A.1 and B.1; update only when refs change):
@@ -64,6 +72,7 @@ A fixed list the agent consults when writing C (derived from A.1 and B.1; update
 - **C99 only:** Use only ISO C99 and nt1256; no C11+ language or library; ensure `-std=c99` compatibility.
 - **Phase B rules:** When the rule index from B.1 is available, apply it while generating (e.g. naming, brace style, no disallowed file-scope objects, comment/style per rule_id). Same rule_ids as used in B.2/B.3.
 - **Unix-like only; never recommend Windows:** Target POSIX/Unix-like systems only. Do not introduce or recommend `_WIN32`/`_WIN64`, Winsock, or Windows-only headers/libraries in review or generated code.
+- **POSIX visibility on glibc:** When generating code that uses POSIX-only APIs from standard headers (e.g. `sigaction`/`sigemptyset` from `<signal.h>`), ensure the translation unit requests POSIX as per the "POSIX visibility (glibc/Linux)" section above (e.g. `#define _POSIX_C_SOURCE 200809L` at the very top of the file before any `#include`, or document that the build defines it). Generated code must compile with the project's existing flags (e.g. `-std=c99` without relying on default glibc extensions).
 - **Inline citations:** Add comments per [docs/INLINE_TRACEABILITY_GUIDE.md](docs/INLINE_TRACEABILITY_GUIDE.md) (reference + rationale at key points).
 
 Generated code **MUST** include inline traceability comments as defined in [docs/INLINE_TRACEABILITY_GUIDE.md](docs/INLINE_TRACEABILITY_GUIDE.md): at file header and at key constructs (e.g. function start, non-obvious C99 or rule-driven choices), cite the applicable C99 clause or rule_id and a short rationale. The agent follows that guide when generating new C code.
