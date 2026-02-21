@@ -6,46 +6,66 @@ alwaysApply: false
 
 # C99 Compliance and Code Generation
 
-## When this rule applies
+## Structure and Applicability
 
-Apply when: the user requests a C99 compliance check; the user requests fixes for non-compliant C code; or the user is editing `.c` or `.h` files in a compliance context.
+Apply when: the user requests a C99 compliance check; the user requests fixes for non-compliant C code; or the user is editing `.c` or `.h` files in a compliance context. **MUST** treat any edit to `.c` or `.h` under `src/` as in scope when the user has not explicitly opted out of compliance.
 
----
-
-## Procedure
-
-**MUST:** Use the canonical procedure (path from workspace root). Default: `C_STANDARDS/docs/C99_AI_GUIDE.md`. If this repo is the project root: `docs/C99_AI_GUIDE.md`. If you renamed the standards folder, update this path in the rule.
-**MUST:** Execute steps in the order defined in the guide.
-**MUST:** Run Phase A (Core C99 language) first, then Phase B (Code Compliance).
-**MUST:** Do not mix or skip phases.
-**MUST:** In Phase A use only ISO C99 and nt1256. Do not apply 10rules or jpl-c-1.0 in Phase A.
-**MUST:** In Phase B use only 10rules.pdf and jpl-c-1.0.pdf.
-**MUST:** The agent executes the steps (LOAD, RUN, EVALUATE, GENERATE, OUTPUT). Do not hand off to "the user" or "the reviewer" for steps defined in the guide.
-**Project layout (default):** Source in `src/`, headers in `src/includes/`, compiled output in `bin/`. See guide for details.
+- **MUST:** Use the canonical procedure from workspace root: `docs/C99_AI_GUIDE.md` (project root) or `C_STANDARDS/docs/C99_AI_GUIDE.md` (standards folder). Update path in rule if the standards folder is renamed.
+- **MUST:** Execute steps in the order defined in the guide.
+- **MUST:** Run Phase A (Core C99) in full before Phase B (Code Compliance).
+- **MUST NOT:** Mix or skip phases; do not run Phase B steps before Phase A completes with pass.
+- **MUST:** In Phase A use only ISO C99 and nt1256; in Phase B use only 10rules.pdf and jpl-c-1.0.pdf.
+- **MUST NOT:** Apply 10rules or jpl-c-1.0 in Phase A, or ISO C99/nt1256 as the rule source in Phase B.
+- **MUST:** Treat the agent as responsible for LOAD, RUN, EVALUATE, GENERATE, OUTPUT steps defined in the guide.
+- **MUST NOT:** Hand off guide-defined steps to "the user" or "the reviewer"; the agent performs them.
+- **MUST:** Assume default project layout: source in `src/`, headers in `src/includes/`, compiled output in `bin/`, reports in `reports/`. See guide for details.
 
 ---
 
-## Compliance and review (outputs)
+## Code Review
 
 When reviewing or checking C code:
 
-**OUTPUT (Phase A):** Emit `language_report` and `language_result` with exact schema fields: file, line, diagnostic_code, message, severity, c99_clause. Write to `reports/<run_id>_language.json`.
-**OUTPUT (Phase B):** Emit `compliance_report` and `compliance_result` with exact schema fields: file, line, rule_id, message, severity. Write to `reports/<run_id>_compliance.json`.
+- **MUST:** Run Phase A.2 (COMPILE_C99) and A.3 (EVALUATE_LANGUAGE) to produce `language_report` and `language_result`.
+- **MUST:** Run Phase B.2 (RUN_COMPLIANCE_CHECK) and B.3 (EVALUATE_COMPLIANCE) only after Phase A passes (A.3 pass = true).
+- **MUST:** Write Phase A output to `reports/<run_id>_language.json` with exact schema: file, line, diagnostic_code, message, severity, c99_clause, rationale.
+- **MUST:** Write Phase B output to `reports/<run_id>_compliance.json` with exact schema: file, line, rule_id, message, severity, rationale.
+- **MUST NOT:** Omit or alter required schema fields; use exact field names from the guide.
+- **MUST:** Populate `rationale` for every finding (language and compliance), stating why the code violates the cited C99 clause or rule_id.
+- **MUST NOT:** Emit a finding without a rationale; every finding must include reference and rationale.
+- **MUST:** Include an authoritative reference in every finding: C99 clause (e.g. C99 6.2.1) for language; rule_id (e.g. JPL-C 1.2) for compliance.
+- **MUST NOT:** Approve or suggest merging when Phase A has error_count > 0 (language_result.pass is false).
+- **MUST NOT:** Approve or suggest merging when Phase B has unresolved blocking violations per the guide (compliance_result.pass is false).
+- **MUST NOT:** Suppress, dismiss, or ignore findings without a remediation_log entry or documented justification.
+- **MUST:** Treat review as complete only after reports are written and pass/fail is evaluated per A.3 and B.3.
+- **MUST:** Assume the project targets **Unix-like systems only** (e.g. Linux, macOS). **MUST NOT** recommend, suggest, or encourage Windows-specific code, Winsock, `_WIN32`/`_WIN64` conditionals, or Windows build instructions. Findings and remediation suggestions must be Unix/POSIX-oriented only.
 
 ---
 
-## Code generation (fixes)
+## Code Generation
 
 When generating or editing C code to fix non-compliance:
 
-**MUST:** Propose only changes that satisfy the cited rule or C99 clause.
-**MUST:** Add every change to a `remediation_log` entry with: file, finding_id, reference (C99 clause or rule_id), change_description, patch_or_snippet (optional).
-**MUST:** Re-run the relevant phase after edits: A.2 for language fixes, B.2 for compliance fixes.
+- **MUST:** When generating **new** C code (new file or new function), conform to the same C99 language (ISO C99, nt1256) and, when the Phase B rule index is in use, to the same rule set (10rules, jpl-c-1.0). Use the guide's "When generating new C code" and "Generation constraints (checklist)" as constraints.
+- **MUST:** When generating **new** C code, add inline traceability comments per the inline traceability guide (`docs/INLINE_TRACEABILITY_GUIDE.md` from project root, or `C_STANDARDS/docs/INLINE_TRACEABILITY_GUIDE.md` if standards folder in repo): reference (C99 clause or rule_id) and rationale at key points (file header, function start, non-obvious C99 or rule-driven constructs).
+- **MUST NOT:** When generating new C code, introduce C11+ constructs or style that would fail Phase A or Phase B; do not ignore the loaded language ref or rule index.
+- **MUST:** Propose only changes that satisfy the cited rule or C99 clause for a specific finding.
+- **MUST NOT:** Propose a fix without a corresponding finding and its authoritative reference (C99 clause or rule_id).
+- **MUST:** Add every change to a remediation_log entry with: file, finding_id, reference (C99 clause or rule_id), change_description, remediation_rationale, and optionally patch_or_snippet.
+- **MUST NOT:** Omit any edit from the remediation_log; every edit must have a matching entry with the same reference as the finding.
+- **MUST:** In every remediation_log entry, include `remediation_rationale` stating why the change was required by the reference (C99 clause or rule_id).
+- **MUST NOT:** Omit remediation_rationale or document only what was changed without why it was required.
+- **MUST:** Re-run Phase A.2 after language fixes (A.4); re-run Phase B.2 after compliance fixes (B.4).
+- **MUST NOT:** Mark the fix task complete if the re-run fails (A.3 or B.3 pass is false).
+- **MUST NOT:** Introduce new C99 or Phase B violations; generated code must satisfy the phase that was fixed.
+- **MUST:** Prefer minimal edits: change only what is necessary to satisfy the cited rule or clause; avoid unrelated refactors or style-only changes unless required by the rule.
+- **MUST:** Ensure generated code compiles under `-std=c99` with the project include path before considering the fix complete.
+- **MUST:** Produce code for **Unix-like systems only**. **MUST NOT** recommend or introduce Windows-only code, Winsock, `_WIN32`/`_WIN64` preprocessor branches, Windows headers, or `#pragma comment(lib, ...)` for Windows libraries. Use POSIX APIs (e.g. Berkeley sockets, `close()`, `errno`/`strerror`) only.
 
 ---
 
 ## References (citations)
 
-**CITATION (language issues):** Use C99 clause from ISO C99 or nt1256, e.g. "C99 6.2.1".
-**CITATION (compliance issues):** Use rule_id from 10rules.pdf or jpl-c-1.0.pdf, e.g. "JPL-C 1.2".
-**MUST:** Include the authoritative reference in every finding and in every remediation_log entry.
+- **CITATION (language issues):** Use C99 clause from ISO C99 or nt1256, e.g. "C99 6.2.1".
+- **CITATION (compliance issues):** Use rule_id from 10rules.pdf or jpl-c-1.0.pdf, e.g. "JPL-C 1.2".
+- **MUST:** Include the authoritative reference in every finding and in every remediation_log entry.

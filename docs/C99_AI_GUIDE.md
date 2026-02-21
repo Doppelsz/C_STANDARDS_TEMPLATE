@@ -49,6 +49,27 @@ Paths relative to workspace root. Override per project.
 
 ---
 
+## When generating new C code
+
+This project targets **Unix-like systems only** (e.g. Linux, macOS). Generated code must use POSIX where applicable; never recommend or introduce Windows-specific APIs, conditional compilation for Windows, or Windows build instructions.
+
+The same references used for Phase A (A.1) and Phase B (B.1) are the **single source of truth** for both checking and writing. When generating **new** C code (new file or new function), the agent **MUST** apply them as constraints so that the code conforms to C99 and to the rule index from B.1 (once Phase A passes). Do not rely on C11 or later; do not use constructs or style that violate the loaded rule set.
+
+This reduces violations at A.2/B.2 and minimizes A.4/B.4 fix cycles. The agent does not modify the guide or the Cursor rule during generation; it only reads them.
+
+### Generation constraints (checklist)
+
+A fixed list the agent consults when writing C (derived from A.1 and B.1; update only when refs change):
+
+- **C99 only:** Use only ISO C99 and nt1256; no C11+ language or library; ensure `-std=c99` compatibility.
+- **Phase B rules:** When the rule index from B.1 is available, apply it while generating (e.g. naming, brace style, no disallowed file-scope objects, comment/style per rule_id). Same rule_ids as used in B.2/B.3.
+- **Unix-like only; never recommend Windows:** Target POSIX/Unix-like systems only. Do not introduce or recommend `_WIN32`/`_WIN64`, Winsock, or Windows-only headers/libraries in review or generated code.
+- **Inline citations:** Add comments per [docs/INLINE_TRACEABILITY_GUIDE.md](docs/INLINE_TRACEABILITY_GUIDE.md) (reference + rationale at key points).
+
+Generated code **MUST** include inline traceability comments as defined in [docs/INLINE_TRACEABILITY_GUIDE.md](docs/INLINE_TRACEABILITY_GUIDE.md): at file header and at key constructs (e.g. function start, non-obvious C99 or rule-driven choices), cite the applicable C99 clause or rule_id and a short rationale. The agent follows that guide when generating new C code.
+
+---
+
 ## Phase A: Core C99 programming language
 
 **Scope:** Valid C99 per ISO C99 and nt1256 only. Do not apply 10rules or jpl-c-1.0 in this phase.
@@ -57,7 +78,7 @@ Paths relative to workspace root. Override per project.
 
 - **INPUT:** Path to `refs/ISO_c_1999_definition.pdf`, path to `refs/nt1256.pdf`.
 - **ACTION:** Load and parse (or index) language definitions for later steps. If tooling already embeds C99, treat as ready.
-- **OUTPUT:** Internal language reference or "OK".
+- **OUTPUT:** Internal language reference or "OK". Use this language reference when generating new C code (see "When generating new C code") so output conforms to C99.
 - **NEXT_STEP:** A.2.
 
 ### A.2 COMPILE_C99
@@ -70,15 +91,15 @@ Paths relative to workspace root. Override per project.
 ### A.3 EVALUATE_LANGUAGE
 
 - **INPUT:** `language_report`.
-- **ACTION:** Classify each finding as error or warning; set pass = (error_count == 0).
+- **ACTION:** Classify each finding as error or warning; set pass = (error_count == 0). Include a short rationale per finding (why it violates the cited clause).
 - **OUTPUT:** `language_result` per schema below.
 - **DECISION:** IF pass THEN NEXT_STEP = B.1. ELSE NEXT_STEP = A.4.
 
 ### A.4 GENERATE_LANGUAGE_FIX
 
 - **INPUT:** Source (default: under `src/`, headers under `src/includes/`), `language_result` (failed findings).
-- **ACTION:** Generate edits so code conforms to C99. Cite ISO C99 or nt1256 clause for each edit.
-- **OUTPUT:** Patched source (or patch file) + `remediation_log` entries (file, finding_id, reference as C99_clause, change_description).
+- **ACTION:** Address **all** current Phase A findings in one batch; then run A.2 once to verify. Do not fix one finding, re-run, then fix the next. Generate edits so code conforms to C99. Cite ISO C99 or nt1256 clause for each edit.
+- **OUTPUT:** Patched source (or patch file) + `remediation_log` entries (file, finding_id, reference as C99_clause, change_description, remediation_rationale). Each entry must include remediation_rationale (why the change was required).
 - **NEXT_STEP:** A.2 (re-run compile).
 
 ---
@@ -91,7 +112,7 @@ Paths relative to workspace root. Override per project.
 
 - **INPUT:** Paths to `refs/10rules.pdf`, `refs/jpl-c-1.0.pdf`.
 - **ACTION:** Load/index rules by rule_id and short description.
-- **OUTPUT:** Rule index: list of { rule_id, source_doc, description }.
+- **OUTPUT:** Rule index: list of { rule_id, source_doc, description }. Use this rule index when generating new C code (see "When generating new C code") so output conforms to the rule set.
 - **NEXT_STEP:** B.2.
 
 ### B.2 RUN_COMPLIANCE_CHECK
@@ -104,22 +125,22 @@ Paths relative to workspace root. Override per project.
 ### B.3 EVALUATE_COMPLIANCE
 
 - **INPUT:** `compliance_report`.
-- **ACTION:** Compute pass (e.g. no unresolved high/medium violations). Set pass boolean. Set counts by severity.
+- **ACTION:** Compute pass (e.g. no unresolved high/medium violations). Set pass boolean. Set counts by severity. Include a short rationale per finding (why it violates the rule_id).
 - **OUTPUT:** `compliance_result` per schema below.
 - **DECISION:** IF pass THEN end (success). ELSE NEXT_STEP = B.4.
 
 ### B.4 GENERATE_COMPLIANCE_FIX
 
 - **INPUT:** Source (default: under `src/`, headers under `src/includes/`), `compliance_report` (violations), rule index.
-- **ACTION:** Generate edits per violation. Cite rule_id for each edit.
-- **OUTPUT:** Patched source (or patch) + `remediation_log` (file, finding_id, reference as rule_id, change_description).
+- **ACTION:** Address **all** current Phase B findings in one batch; then run B.2 once to verify. Do not fix one finding, re-run, then fix the next. Generate edits per violation. Cite rule_id for each edit.
+- **OUTPUT:** Patched source (or patch) + `remediation_log` (file, finding_id, reference as rule_id, change_description, remediation_rationale). Each entry must include remediation_rationale (why the change was required).
 - **NEXT_STEP:** B.2 (re-run compliance check).
 
 ---
 
 ## Output schemas
 
-MUST conform; use exact field names.
+MUST conform; use exact field names. **rationale** (in findings) and **remediation_rationale** (in remediation_log) are required for traceability.
 
 ### language_report
 
@@ -134,11 +155,14 @@ MUST conform; use exact field names.
       "diagnostic_code": "string",
       "message": "string",
       "severity": "error | warning",
-      "c99_clause": "string or null"
+      "c99_clause": "string or null",
+      "rationale": "string"
     }
   ]
 }
 ```
+
+- **rationale:** Required for every finding. Brief explanation of why this location violates the cited C99 clause.
 
 ### language_result
 
@@ -166,11 +190,14 @@ File naming: `reports/<run_id>_language.json`.
       "line": "integer",
       "rule_id": "string",
       "message": "string",
-      "severity": "high | medium | low"
+      "severity": "high | medium | low",
+      "rationale": "string"
     }
   ]
 }
 ```
+
+- **rationale:** Required for every finding. Brief explanation of why this location violates the cited rule_id.
 
 ### compliance_result
 
@@ -196,12 +223,15 @@ Array (A.4 or B.4):
     "finding_id": "string",
     "reference": "string",
     "change_description": "string",
+    "remediation_rationale": "string",
     "patch_or_snippet": "string or null"
   }
 ]
 ```
 
 - **reference:** C99 clause (Phase A) or rule_id (Phase B).
+- **change_description:** Required. What was changed.
+- **remediation_rationale:** Required. Why this change was required by the reference.
 
 ### run_manifest
 
@@ -233,5 +263,17 @@ Array (A.4 or B.4):
 **remediation_log (one entry):**
 
 ```json
-[{"file": "src/foo.c", "finding_id": "L1", "reference": "C99 6.2.1", "change_description": "Declared identifier at block scope.", "patch_or_snippet": null}]
+[{"file": "src/foo.c", "finding_id": "L1", "reference": "C99 6.2.1", "change_description": "Declared identifier at block scope.", "remediation_rationale": "C99 6.2.1 requires identifiers to be declared before use in block scope; the fix adds the declaration.", "patch_or_snippet": null}]
+```
+
+**language_report (one finding with rationale):**
+
+```json
+{"run_id": "r1", "files": ["src/foo.c"], "findings": [{"file": "src/foo.c", "line": 10, "diagnostic_code": "error", "message": "undeclared identifier", "severity": "error", "c99_clause": "C99 6.2.1", "rationale": "C99 6.2.1 requires identifiers to be declared before use; the identifier was used at block scope without declaration."}]}
+```
+
+**compliance_report (one finding with rationale):**
+
+```json
+{"project_id": "p1", "run_id": "r1", "files": ["src/foo.c"], "findings": [{"file": "src/foo.c", "line": 5, "rule_id": "JPL-C 1.2", "message": "Function length exceeds limit", "severity": "high", "rationale": "JPL-C 1.2 limits function length; this function exceeds the allowed line count."}]}
 ```

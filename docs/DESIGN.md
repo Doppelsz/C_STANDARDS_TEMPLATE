@@ -23,6 +23,7 @@
 | Component | Role |
 | --------- | ----- |
 | **docs/C99_AI_GUIDE.md** | Procedure: step index, A.1–A.4, B.1–B.4, schemas, default layout. AI-oriented (INPUT/OUTPUT/NEXT). |
+| **docs/INLINE_TRACEABILITY_GUIDE.md** | Inline citation format and placement for generated C code; reference + rationale at key points. |
 | **.cursor/rules/c99-compliance-codegen.mdc** | Rule: when to apply; MUST follow guide, Phase A then B; schema outputs; remediation_log with clause/rule_id. |
 | **refs/** | PDFs: Phase A (ISO C99, nt1256), Phase B (10rules, jpl-c-1.0). Add/replace and update guide list. |
 | **README.md** | Use this template, layout, contents, 0BSD. |
